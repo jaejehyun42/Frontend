@@ -1,92 +1,166 @@
-// game.ts
-import { keys } from "./event.js";
+import { startButton } from "./loop.js";
+import { ball, paddleLeft, paddleRight, paddleHeight, paddleWidth, countdownText, ballSize } from "./draw.js";
 
-const canvas = document.getElementById("gameCanvas") as HTMLCanvasElement;
+const WINNING_SCORE = 11;
+let gameRunning = false;
+let leftScore = 0, rightScore = 0;
+let countdownEndTime: number | null = null;
 
-// 게임 요소 설정
-export const paddleWidth = 10, paddleHeight = 100;
-export const paddleSpeed = 6;
-export const ballSize = 10;
+let ballSpeedX = 0.3, ballSpeedY = 0.2;
+const constSpeedX = 0.3, constSpeedY = 0.2;
+const paddleSpeed = 0.4;
 
-export let leftPaddleY = canvas.height / 2 - paddleHeight / 2;
-export let rightPaddleY = canvas.height / 2 - paddleHeight / 2;
-export let ballX = canvas.width / 2, ballY = canvas.height / 2;
-export let ballSpeedX = 5, ballSpeedY = 3;
+const keys: { [key: string]: boolean } = {};
+window.addEventListener("keydown", (e) => (keys[e.key] = true));
+window.addEventListener("keyup", (e) => (keys[e.key] = false));
 
-// 점수 관리
-export const WINNING_SCORE = 11;
-export let leftScore = 0, rightScore = 0;
-export let gameRunning = false;
-export let gameOver = false;
-
-// 카운트다운 총 시간
-export const countdownDuration = 1500;
-export let countdownEndTime: number | null = null;
-
-// 버튼 영역 정의 (게임 시작 & 재시작)
-export let showStartButton = true;
-export let showRestartButton = false;
-
-// 게임 시작 (변수 초기화)
 export function startGame()
 {
-    showStartButton = false;
-    showRestartButton = false;
+    if (!ball || !paddleLeft || !paddleRight) return;
+
     gameRunning = true;
-    gameOver = false;
     leftScore = 0;
     rightScore = 0;
-    leftPaddleY = canvas.height / 2 - paddleHeight / 2;
-    rightPaddleY = canvas.height / 2 - paddleHeight / 2;
+
+    ballSpeedX = Math.random() > 0.5 ? constSpeedX : -constSpeedX;
+    ballSpeedY = Math.random() > 0.5 ? constSpeedY : -constSpeedY;
+    setCountdown();
 }
 
-// 게임 다시 시작
-export function restartGame()
+export function resetGame() {
+    gameRunning = false;
+    leftScore = 0;
+    rightScore = 0;
+    countdownEndTime = null;
+
+    if (ball) {
+        ball.position.x = 0;
+        ball.position.y = 0;
+    }
+
+    if (paddleLeft) paddleLeft.position.y = 0;
+    if (paddleRight) paddleRight.position.y = 0;
+
+    ballSpeedX = 0.2 * (Math.random() > 0.5 ? 1 : -1);
+    ballSpeedY = 0.15 * (Math.random() > 0.5 ? 1 : -1);
+
+    if (startButton) startButton.isVisible = true;  // ✅ 시작 버튼 보이게 설정
+}
+
+export function resetBall()
 {
-    showRestartButton = false;
-    startGame();
+    if (!ball) return;
+
+    ball.position.x = 0;
+    ball.position.y = 0;
+    ballSpeedX = Math.random() > 0.5 ? constSpeedX : -constSpeedX;
+    ballSpeedY = Math.random() > 0.5 ? constSpeedY : -constSpeedY;
 }
 
-// 게임 업데이트 (패들 움직임, 공 위치 및 충돌 처리, 득점 및 승리 체크)
+export function setCountdown()
+{
+    countdownEndTime = performance.now() + 3000;
+    gameRunning = false;
+    resetBall();
+}
+
+export function updateCountdown()
+{
+    if (!countdownEndTime) return;
+
+    let remaining = countdownEndTime - performance.now();
+    let count = Math.ceil(remaining / 1000);
+
+    if (remaining > 0)
+        countdownText.text = count.toString();
+    else
+    {
+        countdownText.text = "";
+        countdownEndTime = null;
+        gameRunning = true;
+    }
+}
+
 export function update()
 {
-    // 카운트다운 진행 중이거나 게임 정지 상태면 업데이트하지 않음
-    if (!gameRunning || gameOver || countdownEndTime !== null)
-        return;
+    updateCountdown();
 
-    // 패들 움직임
-    if ((keys["w"] || keys["W"]) && leftPaddleY > 0) leftPaddleY -= paddleSpeed;
-    if ((keys["s"] || keys["S"]) && leftPaddleY < canvas.height - paddleHeight) leftPaddleY += paddleSpeed;
-    if (keys["ArrowUp"] && rightPaddleY > 0) rightPaddleY -= paddleSpeed;
-    if (keys["ArrowDown"] && rightPaddleY < canvas.height - paddleHeight) rightPaddleY += paddleSpeed;
+    if (!ball || !paddleLeft || !paddleRight) return;
+    if (!gameRunning || countdownEndTime !== null) return;
 
-    // 공 이동
-    ballX += ballSpeedX;
-    ballY += ballSpeedY;
+    // 패들 이동
+    if ((keys["w"] || keys["W"] || keys["ㅈ"]) && paddleLeft.position.y < 6) paddleLeft.position.y += paddleSpeed;
+    if ((keys["s"] || keys["S"] || keys["ㄴ"]) && paddleLeft.position.y > -6) paddleLeft.position.y -= paddleSpeed;
+    if (keys["ArrowUp"] && paddleRight.position.y < 6) paddleRight.position.y += paddleSpeed;
+    if (keys["ArrowDown"] && paddleRight.position.y > -6) paddleRight.position.y -= paddleSpeed;
 
-    // 벽 충돌 (위, 아래)
-    if (ballY <= 0 || ballY >= canvas.height - ballSize)
+    // 공 이동 (이전 위치 저장)
+    ball.position.x += ballSpeedX;
+    ball.position.y += ballSpeedY;
+
+    // 벽 충돌 처리
+    if (ball.position.y + ballSize / 2 >= 8 || ball.position.y - ballSize / 2 <= -8) {
         ballSpeedY *= -1;
+    }
 
-    // 패들 충돌 (공 전체 크기 고려)
-    if (ballX <= paddleWidth && ballY + ballSize >= leftPaddleY && ballY <= leftPaddleY + paddleHeight)
-        ballSpeedX = Math.abs(ballSpeedX);
-    if (ballX + ballSize >= canvas.width - paddleWidth && ballY + ballSize >= rightPaddleY && ballY <= rightPaddleY + paddleHeight)
-        ballSpeedX = -Math.abs(ballSpeedX);
+    // 패들 상하단 충돌
+    if (ball.position.x >= paddleLeft.position.x - paddleWidth / 2 && ball.position.x <= paddleLeft.position.x + paddleWidth / 2 &&
+        ball.position.y + ballSize / 2 >= paddleLeft.position.y - paddleHeight / 2 && ball.position.y - ballSize / 2 <= paddleLeft.position.y + paddleHeight / 2)
+    {
+        if (ball.position.y > paddleLeft.position.y) {
+            ballSpeedY *= -1;
+            ball.position.y = paddleLeft.position.y + paddleHeight / 2 + ballSize / 2;
+        }
+        else {
+            ballSpeedY *= -1;
+            ball.position.y = paddleLeft.position.y - paddleHeight / 2 - ballSize / 2;
+        }
+    }
+    if (ball.position.x >= paddleRight.position.x - paddleWidth / 2 && ball.position.x <= paddleRight.position.x + paddleWidth / 2 &&
+        ball.position.y + ballSize / 2 >= paddleRight.position.y - paddleHeight / 2 && ball.position.y - ballSize / 2 <= paddleRight.position.y + paddleHeight / 2)
+    {
+        if (ball.position.y > paddleRight.position.y) {
+            ballSpeedY *= -1;
+            ball.position.y = paddleRight.position.y + paddleHeight / 2 + ballSize / 2;
+        }
+        else {
+            ballSpeedY *= -1;
+            ball.position.y = paddleRight.position.y - paddleHeight / 2 - ballSize / 2;
+        }
+    }
+
+    // 패들 충돌 좌우 처리
+    if (ball.position.x - ballSize / 2 <= paddleLeft.position.x + paddleWidth / 2 && ball.position.x + ballSize / 2 >= paddleLeft.position.x - paddleWidth / 2 &&
+        ball.position.y <= paddleLeft.position.y + paddleHeight / 2 && ball.position.y >= paddleLeft.position.y - paddleHeight / 2)
+    {
+        ballSpeedX *= -1;
+        ball.position.x = paddleLeft.position.x + paddleWidth;
+    }
+    if (ball.position.x + ballSize / 2 >= paddleRight.position.x - paddleWidth / 2 && ball.position.x - ballSize / 2 <= paddleRight.position.x + paddleWidth &&
+        ball.position.y <= paddleRight.position.y + paddleHeight / 2 && ball.position.y >= paddleRight.position.y - paddleHeight / 2)
+    {
+        ballSpeedX *= -1;
+        ball.position.x = paddleRight.position.x - paddleWidth;
+    }
 
     // 득점 판정
-    if (ballX <= 0)
-    {
+    if (ball.position.x - ballSize / 2 <= -17) {
         rightScore++;
-        if (!checkGameEnd())
-            setCountdown();
+        updateScore();
+        if (!checkGameEnd()) setCountdown();
     }
-    if (ballX >= canvas.width)
-    {
+    if (ball.position.x + ballSize / 2 >= 17) {
         leftScore++;
-        if (!checkGameEnd())
-            setCountdown();
+        updateScore();
+        if (!checkGameEnd()) setCountdown();
     }
+}
+
+// 점수 업데이트
+function updateScore()
+{
+    const scoreBoard = document.getElementById("scoreBoard");
+    if (scoreBoard) scoreBoard.textContent = `Player 1: ${leftScore} | Player 2: ${rightScore}`;
 }
 
 // 게임 종료 조건 체크
@@ -96,36 +170,16 @@ function checkGameEnd(): boolean
     {
         if (Math.abs(leftScore - rightScore) >= 2)
         {
-            gameOver = true;
             gameRunning = false;
-            showRestartButton = true;
+            startButton.isVisible = true;
             return true;
         }
     }
     else if (leftScore >= WINNING_SCORE || rightScore >= WINNING_SCORE)
     {
-        gameOver = true;
         gameRunning = false;
-        showRestartButton = true;
+        startButton.isVisible = true;
         return true;
     }
     return false;
-}
-
-// 카운트다운 시간 설정
-function setCountdown()
-{
-    countdownEndTime = performance.now() + countdownDuration;
-    gameRunning = false;
-}
-
-// 공 리셋 및 게임 재개
-export function resumeGame()
-{
-    ballX = canvas.width / 2;
-    ballY = canvas.height / 2;
-    ballSpeedX = Math.random() > 0.5 ? 5 : -5;
-    ballSpeedY = Math.random() > 0.5 ? 3 : -3;
-    countdownEndTime = null;
-    gameRunning = true;
 }

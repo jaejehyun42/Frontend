@@ -1,22 +1,39 @@
-document.addEventListener("DOMContentLoaded", () => {
-    const contentDiv = document.getElementById("content")!;
-    const buttons = document.querySelectorAll(".nav-btn");
+import { stopGameLoop } from "./games/loop.js";
 
-    buttons.forEach(button => {
-        button.addEventListener("click", async () => {
-            const page = (button as HTMLElement).dataset.page!;
+document.addEventListener("DOMContentLoaded", () => {
+    const contentDiv = document.getElementById("content");
+    const navButtons = document.querySelectorAll(".nav-btn");
+
+    if (!contentDiv) return;
+
+    let currentPage = "";
+    let preCanvas: HTMLCanvasElement | null = null;
+
+    navButtons.forEach((btn) => {
+        btn.addEventListener("click", async (event) => {
+            const target = event.target as HTMLElement;
+            const page = target.getAttribute("data-page");
+
+            if (page === currentPage)
+                return;
+            if (page)
+                currentPage = page;
+            contentDiv.innerHTML = "";
+
             try {
-                // 동적으로 해당 페이지의 JS 파일 로드
+                if (preCanvas) {
+                    preCanvas.remove();
+                    preCanvas = null;
+                }
+
+                const module = await import(`./pages/${page}.js`);
+                contentDiv.innerHTML = module.render();
                 if (page === "game") {
-                    const module = await import(`./games/${page}.js`);
-                    contentDiv.innerHTML = module.renderPage();
-                    module.gameLoop();
+                    stopGameLoop();
+                    module.setupGameCanvas();
                 }
-                else {
-                    const module = await import(`./pages/${page}.js`);
-                    contentDiv.innerHTML = module.render();
-                }
-            } catch (error) {
+            }
+            catch (error) {
                 contentDiv.innerHTML = `<h2 class="text-5xl mb-10 text-center font-semibold text-red-500">🚨 Error</h2>
                 <p class="text-xl text-center">Fail to loading ${page}.js</p>`;
                 console.error(`Error loading ${page}.js`, error);
