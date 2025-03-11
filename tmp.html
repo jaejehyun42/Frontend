@@ -1,0 +1,57 @@
+<!--index.html-->
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pong</title>
+	<link rel="stylesheet" href="styles.css">
+	<link href="https://fonts.googleapis.com/css2?family=Silkscreen&display=swap" rel=    "stylesheet">
+   <style>
+        body {
+            font-family: 'Silkscreen', sans-serif;
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white h-screen"> <!-- 부모 바디 클래스-->
+    <!-- 여기에 페이지가 동적으로 삽입됨 -->
+    <div id="app" class="flex h-full justify-center items-center"></div> <!-- 속성들은 자식한테도 감-->
+
+    <!-- 🔥 여기에서 라우터를 실행하는 app.js를 불러옴 -->
+    <script type="module" src="dist/app.js"></script>
+</body>
+</html>
+
+<!-- 대시보드 html-->
+<div class="flex h-screen bg-gray-900">
+    <!-- 사이드바 (왼쪽 고정) -->
+    <aside class="fixed left-0 top-0 w-64 h-full bg-black shadow-lg p-4 flex flex-col items-center space-y-4">
+		<!-- 페이지 제목 -->
+		<h1 class="mt-2 mb-6 text-3xl font-bold text-blue-600">PONG</h1>
+	
+		<!-- 유저 아바타 및 이름 -->
+		<div class="flex flex-col items-center">
+            <img src="/Basic_image.webp" alt="User Avatar" class="w-30 h-30 rounded-full border border-gray-300">
+			<p class="mt-2 mb-4 text-lg font-semibold text-gray-700">User Name</p>
+		</div>
+	
+		<!-- 네비게이션 버튼 -->
+		<button data-i18n="dashboard" id="dashboard" class="nav-btn w-full text-center p-2 rounded-lg hover:bg-blue-100" data-page="home">DASHBOARD</button>
+		<button data-i18n="game" id="game" class="nav-btn w-full text-center p-2 rounded-lg hover:bg-blue-100" data-page="game">GAME</button>
+		<button data-i18n="profile" id="profile" class="nav-btn w-full text-center p-2 rounded-lg hover:bg-blue-100" data-page="profile">PROFILE</button>
+
+		<!-- 언어 변경 버튼 (사이드바 하단) -->
+		<div class="mt-auto mb-4">
+			<button id="lang-toggle" class="p-2 rounded-full bg-gray-800 hover:bg-gray-700 transition duration-300">
+				<img src="flag-usa.png" alt="Change Language" class="w-8 h-8">
+			</button>
+		</div>
+	</aside>
+
+	<!-- 메인 콘텐츠 영역 -->
+	<main class="flex-1 flex">
+		<div id="content" class="flex-1 bg-white p-6 rounded-lg shadow-md m-4">
+			<h2 class="text-5xl mb-10 text-center font-semibold">📊 DASHBOARD</h2>
+			<p class="text-xl text-center">Welcome! Here is Dashboard Page.</p>
+		</div>
+	</main>
