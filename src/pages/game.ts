@@ -47,6 +47,8 @@ export async function startGame(player1: string, player2: string): Promise<strin
 	if (!contentDiv)
 		throw new Error("Error: Cannot find content element!");
 
+	if (player1.startsWith("AI"))
+		[player1, player2] = [player2, player1];
 	contentDiv.innerHTML = `
 		<div class="relative flex flex-col items-center h-full">
 			<!-- 헤더 -->
@@ -67,9 +69,7 @@ export async function startGame(player1: string, player2: string): Promise<strin
 	if (!canvas)
 		throw new Error("🚨 Error: Cannot find gameCanvas element!");
 
-	if (player1.startsWith("AI"))
-		return await startGameLoop(canvas, player2, player1, "PvE");
-	else if (player2.startsWith("AI"))
+	if (player1.startsWith("AI") || player2.startsWith("AI"))
 		return await startGameLoop(canvas, player1, player2, "PvE");
 	else
 		return await startGameLoop(canvas, player1, player2, "PvP");

@@ -23,6 +23,8 @@
 	</style>
 </head>
 <body class="flex h-screen bg-gray-100">
+	<!-- 오버레이 추가 -->
+	<div id="overlay" class="fixed top-0 left-0 z-40 w-full h-full bg-black opacity-0 hidden transition-opacity duration-300"></div>
 
 	<!-- 토글 버튼 -->
 	<button id="menu-toggle" class="fixed top-5 left-5 z-50 w-10 h-10 text-xl text-white rounded-lg 2xl:hidden" 
@@ -69,11 +71,14 @@
 		const sidebar = document.getElementById('sidebar');
 		const menuToggle = document.getElementById('menu-toggle');
 		const closeToggle = document.getElementById('close-toggle');
+		const overlay = document.getElementById('overlay');
 
 		menuToggle.addEventListener('click', () => {
 			sidebar.classList.remove('-translate-x-full');
 			menuToggle.classList.add('hidden');
+			overlay.classList.remove('hidden');
 			setTimeout(() => {
+				overlay.classList.add('opacity-50');
 				closeToggle.classList.remove('hidden');
 			}, 250);
 		});
@@ -81,7 +86,9 @@
 		closeToggle.addEventListener('click', () => {
 			sidebar.classList.add('-translate-x-full');
 			closeToggle.classList.add('hidden');
+			overlay.classList.remove('opacity-50');
 			setTimeout(() => {
+				overlay.classList.add('hidden');
 				menuToggle.classList.remove('hidden');
 			}, 250);
 		});
