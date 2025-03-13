@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "predev": "npx tsc",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
@@ -17,5 +18,10 @@
     "@tailwindcss/vite": "^4.0.9",
     "tailwindcss": "^4.0.9",
     "typescript": "^5.8.2"
+  },
+  "dependencies": {
+    "@babylonjs/core": "^7.52.2",
+    "@babylonjs/gui": "^7.52.2",
+    "@babylonjs/materials": "^7.52.2"
   }
 }

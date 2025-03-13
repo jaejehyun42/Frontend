@@ -1,52 +1,64 @@
-import { startButton } from "./loop.js";
-import { ball, paddleLeft, paddleRight, paddleHeight, paddleWidth, countdownText, ballSize } from "./draw.js";
+import { Mesh } from "@babylonjs/core";
+import { createImpactEffect } from "./effect.js";
+import { scoreText, showWinner } from "./ui.js";
+import { stopGameLoop, name_1p, name_2p } from "./loop.js";
+import { ball, paddleLeft, paddleRight, paddleHeight, paddleWidth, ballSize } from "./draw.js";
 
 const WINNING_SCORE = 11;
+let gameMode = "PvP";
 let gameRunning = false;
 let leftScore = 0, rightScore = 0;
 let countdownEndTime: number | null = null;
+export let winner: string | null = null;
 
-let ballSpeedX = 0.3, ballSpeedY = 0.2;
-const constSpeedX = 0.3, constSpeedY = 0.2;
-const paddleSpeed = 0.4;
+let ballSpeedX = 18, ballSpeedY = 12;
+const constSpeedX = 18, constSpeedY = 12;
+const paddleSpeed = 24;
 
 const keys: { [key: string]: boolean } = {};
 window.addEventListener("keydown", (e) => (keys[e.key] = true));
 window.addEventListener("keyup", (e) => (keys[e.key] = false));
 
-export function startGame()
+// 게임 시작
+export function startGame(mode: string)
 {
-    if (!ball || !paddleLeft || !paddleRight) return;
-
+    winner = null;
+    leftScore = 0;
+    rightScore = 0;
     gameRunning = true;
-    leftScore = 0;
-    rightScore = 0;
-
-    ballSpeedX = Math.random() > 0.5 ? constSpeedX : -constSpeedX;
-    ballSpeedY = Math.random() > 0.5 ? constSpeedY : -constSpeedY;
+    gameMode = mode;
     setCountdown();
-}
-
-export function resetGame() {
-    gameRunning = false;
-    leftScore = 0;
-    rightScore = 0;
-    countdownEndTime = null;
-
+    
+    if (paddleLeft) paddleLeft.position.y = 0;
+    if (paddleRight) paddleRight.position.y = 0;
     if (ball) {
         ball.position.x = 0;
         ball.position.y = 0;
     }
+    ballSpeedX = Math.random() > 0.5 ? constSpeedX : -constSpeedX;
+    ballSpeedY = Math.random() > 0.5 ? constSpeedY : -constSpeedY;
+}
+
+// 게임 리셋
+export function resetGame()
+{
+    winner = null;
+    leftScore = 0;
+    rightScore = 0;
+    gameRunning = false;
+    countdownEndTime = null;
 
     if (paddleLeft) paddleLeft.position.y = 0;
     if (paddleRight) paddleRight.position.y = 0;
-
-    ballSpeedX = 0.2 * (Math.random() > 0.5 ? 1 : -1);
-    ballSpeedY = 0.15 * (Math.random() > 0.5 ? 1 : -1);
-
-    if (startButton) startButton.isVisible = true;  // ✅ 시작 버튼 보이게 설정
+    if (ball) {
+        ball.position.x = 0;
+        ball.position.y = 0;
+    }
+    ballSpeedX = Math.random() > 0.5 ? constSpeedX : -constSpeedX;
+    ballSpeedY = Math.random() > 0.5 ? constSpeedY : -constSpeedY;
 }
 
+// 공 리셋
 export function resetBall()
 {
     if (!ball) return;
@@ -57,6 +69,7 @@ export function resetBall()
     ballSpeedY = Math.random() > 0.5 ? constSpeedY : -constSpeedY;
 }
 
+// 카운트 다운 설정
 export function setCountdown()
 {
     countdownEndTime = performance.now() + 3000;
@@ -64,6 +77,7 @@ export function setCountdown()
     resetBall();
 }
 
+// 카운트다운 및 점수 업데이트
 export function updateCountdown()
 {
     if (!countdownEndTime) return;
@@ -72,16 +86,17 @@ export function updateCountdown()
     let count = Math.ceil(remaining / 1000);
 
     if (remaining > 0)
-        countdownText.text = count.toString();
+        scoreText.text = count.toString();
     else
     {
-        countdownText.text = "";
+        scoreText.text = `${leftScore}  -  ${rightScore}`;
         countdownEndTime = null;
         gameRunning = true;
     }
 }
 
-export function update()
+// 오브젝트 업데이트
+export function update(deltaTime: number)
 {
     updateCountdown();
 
@@ -89,78 +104,113 @@ export function update()
     if (!gameRunning || countdownEndTime !== null) return;
 
     // 패들 이동
-    if ((keys["w"] || keys["W"] || keys["ㅈ"]) && paddleLeft.position.y < 6) paddleLeft.position.y += paddleSpeed;
-    if ((keys["s"] || keys["S"] || keys["ㄴ"]) && paddleLeft.position.y > -6) paddleLeft.position.y -= paddleSpeed;
-    if (keys["ArrowUp"] && paddleRight.position.y < 6) paddleRight.position.y += paddleSpeed;
-    if (keys["ArrowDown"] && paddleRight.position.y > -6) paddleRight.position.y -= paddleSpeed;
+    if ((keys["w"] || keys["W"] || keys["ㅈ"]) && paddleLeft.position.y < 6.5) paddleLeft.position.y += paddleSpeed * deltaTime;
+    if ((keys["s"] || keys["S"] || keys["ㄴ"]) && paddleLeft.position.y > -6.5) paddleLeft.position.y -= paddleSpeed * deltaTime;;
+    if (gameMode === "PvP") {
+        if (keys["ArrowUp"] && paddleRight.position.y < 6.5) paddleRight.position.y += paddleSpeed * deltaTime;
+        if (keys["ArrowDown"] && paddleRight.position.y > -6.5) paddleRight.position.y -= paddleSpeed * deltaTime;
+    }
+    else {} // AI 추가
 
-    // 공 이동 (이전 위치 저장)
-    ball.position.x += ballSpeedX;
-    ball.position.y += ballSpeedY;
+    // 공 이동
+    ball.position.x += ballSpeedX * deltaTime;
+    ball.position.y += ballSpeedY * deltaTime;
 
     // 벽 충돌 처리
-    if (ball.position.y + ballSize / 2 >= 8 || ball.position.y - ballSize / 2 <= -8) {
+    if (ball.position.y + ballSize / 2 >= 9) {
+        ball.position.y = 9 - ballSize / 2;
+        ballSpeedY *= -1;
+    } 
+    else if (ball.position.y - ballSize / 2 <= -9) {
+        ball.position.y = -9 + ballSize / 2;
         ballSpeedY *= -1;
     }
 
     // 패들 상하단 충돌
-    if (ball.position.x >= paddleLeft.position.x - paddleWidth / 2 && ball.position.x <= paddleLeft.position.x + paddleWidth / 2 &&
-        ball.position.y + ballSize / 2 >= paddleLeft.position.y - paddleHeight / 2 && ball.position.y - ballSize / 2 <= paddleLeft.position.y + paddleHeight / 2)
+    if (collisionPaddleHorz(paddleLeft) || collisionPaddleHorz(paddleRight))
     {
-        if (ball.position.y > paddleLeft.position.y) {
-            ballSpeedY *= -1;
-            ball.position.y = paddleLeft.position.y + paddleHeight / 2 + ballSize / 2;
-        }
-        else {
-            ballSpeedY *= -1;
-            ball.position.y = paddleLeft.position.y - paddleHeight / 2 - ballSize / 2;
-        }
+        createImpactEffect(ball.position);
     }
-    if (ball.position.x >= paddleRight.position.x - paddleWidth / 2 && ball.position.x <= paddleRight.position.x + paddleWidth / 2 &&
-        ball.position.y + ballSize / 2 >= paddleRight.position.y - paddleHeight / 2 && ball.position.y - ballSize / 2 <= paddleRight.position.y + paddleHeight / 2)
+    else if (collisionPaddleVert(paddleLeft, deltaTime) || collisionPaddleVert(paddleRight, deltaTime))
     {
-        if (ball.position.y > paddleRight.position.y) {
-            ballSpeedY *= -1;
-            ball.position.y = paddleRight.position.y + paddleHeight / 2 + ballSize / 2;
-        }
-        else {
-            ballSpeedY *= -1;
-            ball.position.y = paddleRight.position.y - paddleHeight / 2 - ballSize / 2;
-        }
-    }
-
-    // 패들 충돌 좌우 처리
-    if (ball.position.x - ballSize / 2 <= paddleLeft.position.x + paddleWidth / 2 && ball.position.x + ballSize / 2 >= paddleLeft.position.x - paddleWidth / 2 &&
-        ball.position.y <= paddleLeft.position.y + paddleHeight / 2 && ball.position.y >= paddleLeft.position.y - paddleHeight / 2)
-    {
-        ballSpeedX *= -1;
-        ball.position.x = paddleLeft.position.x + paddleWidth;
-    }
-    if (ball.position.x + ballSize / 2 >= paddleRight.position.x - paddleWidth / 2 && ball.position.x - ballSize / 2 <= paddleRight.position.x + paddleWidth &&
-        ball.position.y <= paddleRight.position.y + paddleHeight / 2 && ball.position.y >= paddleRight.position.y - paddleHeight / 2)
-    {
-        ballSpeedX *= -1;
-        ball.position.x = paddleRight.position.x - paddleWidth;
+        createImpactEffect(ball.position);
     }
 
     // 득점 판정
     if (ball.position.x - ballSize / 2 <= -17) {
         rightScore++;
-        updateScore();
         if (!checkGameEnd()) setCountdown();
     }
     if (ball.position.x + ballSize / 2 >= 17) {
         leftScore++;
-        updateScore();
         if (!checkGameEnd()) setCountdown();
     }
 }
 
-// 점수 업데이트
-function updateScore()
+// 패들 좌우 충돌
+function collisionPaddleVert(paddle: Mesh, deltaTime: number): boolean
 {
-    const scoreBoard = document.getElementById("scoreBoard");
-    if (scoreBoard) scoreBoard.textContent = `Player 1: ${leftScore} | Player 2: ${rightScore}`;
+    const maxBounceAngle = Math.PI / 4; // 최대 반사 각도
+    const speedIncrease = 1.02; // 속도 증가율
+
+    let prevX = ball.position.x - ballSpeedX * deltaTime;
+    let curX = ball.position.x;
+
+    let paddleLeftEdge = paddle.position.x - paddleWidth / 2 - ballSize / 2;
+    let paddleRightEdge = paddle.position.x + paddleWidth / 2 + ballSize / 2;
+
+    let crossedPaddle =
+        (prevX < paddleRightEdge && curX >= paddleLeftEdge) ||
+        (prevX > paddleLeftEdge && curX <= paddleRightEdge);
+
+    if (crossedPaddle &&
+        ball.position.y + ballSize / 2 >= paddle.position.y - paddleHeight / 2 &&
+        ball.position.y - ballSize / 2 <= paddle.position.y + paddleHeight / 2)
+    {
+        // 패들 중앙 기준 위치 (-1 ~ 1)
+        let relativeIntersectY = (ball.position.y - paddle.position.y) / (paddleHeight / 2);
+        relativeIntersectY = Math.max(-1, Math.min(1, relativeIntersectY));
+
+        // 반사 각도 계산
+        let bounceAngle = relativeIntersectY * maxBounceAngle;
+
+        // 속도 계산 후 증가량 적용
+        let speed = Math.sqrt(ballSpeedX * ballSpeedX + ballSpeedY * ballSpeedY) * speedIncrease;
+        
+        // 속도 설정
+        ballSpeedX = (paddle === paddleLeft ? 1 : -1) * speed * Math.cos(bounceAngle);
+        if (ballSpeedY >= 0)
+            ballSpeedY = Math.abs(speed * Math.sin(bounceAngle));
+        else
+            ballSpeedY = -Math.abs(speed * Math.sin(bounceAngle));
+
+        // 공 위치 보정
+        if (paddle === paddleLeft) {
+            ball.position.x = paddle.position.x + paddleWidth / 2 + ballSize / 2 + 0.01;
+        } else {
+            ball.position.x = paddle.position.x - paddleWidth / 2 - ballSize / 2 - 0.01;
+        }
+        return true;
+    }
+    return false;
+}
+
+// 패들 상하단 충돌
+function collisionPaddleHorz(paddle: Mesh): boolean
+{
+    if (ball.position.x >= paddle.position.x - paddleWidth / 2 && ball.position.x <= paddle.position.x + paddleWidth / 2 &&
+        ball.position.y + ballSize / 2 >= paddle.position.y - paddleHeight / 2 && ball.position.y - ballSize / 2 <= paddle.position.y + paddleHeight / 2)
+    {
+        if (ball.position.y > paddle.position.y) {
+            ballSpeedY = Math.abs(ballSpeedY);
+            ball.position.y = paddle.position.y + paddleHeight / 2 + ballSize / 2 + 0.01;
+        } else {
+            ballSpeedY = -Math.abs(ballSpeedY);
+            ball.position.y = paddle.position.y - paddleHeight / 2 - ballSize / 2 - 0.01;
+        }
+        return true;
+    }
+    return false;
 }
 
 // 게임 종료 조건 체크
@@ -170,16 +220,26 @@ function checkGameEnd(): boolean
     {
         if (Math.abs(leftScore - rightScore) >= 2)
         {
-            gameRunning = false;
-            startButton.isVisible = true;
+            finishGame();
             return true;
         }
     }
     else if (leftScore >= WINNING_SCORE || rightScore >= WINNING_SCORE)
     {
-        gameRunning = false;
-        startButton.isVisible = true;
+        finishGame();
         return true;
     }
     return false;
+}
+
+// 게임 종료
+async function finishGame()
+{
+    stopGameLoop();
+
+    if (leftScore > rightScore)
+        winner = name_1p;
+    else
+        winner = name_2p;
+    await showWinner(winner);
 }
